@@ -14,6 +14,7 @@ import java.util.Map;
  * @author martineberle
  */
 public class BayersSpamfilter {
+	private int amountOfMails = 0;
 	private Map<String, Integer> spam = new HashMap<String, Integer>();
 	private Map<String, Integer> ham = new HashMap<String, Integer>();
 	
@@ -56,10 +57,12 @@ public class BayersSpamfilter {
 		} else {
 			learn(file, ham, spam);
 		}
+		amountOfMails++;
 	}
 	private void learn(File file, Map<String, Integer> target, Map<String, Integer> check){
 		String[] text = getStringsOutOfFile(file);
 		fillMapWithWords(text, ham, spam);
+		amountOfMails++;
 	}
 	private void fillMapWithWords(String[] words, Map<String, Integer> target, Map<String, Integer> check){
 		for(String w: words){
