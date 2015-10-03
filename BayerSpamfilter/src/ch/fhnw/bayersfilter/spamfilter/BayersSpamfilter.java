@@ -34,7 +34,7 @@ public class BayersSpamfilter {
 	 * @param File folder
 	 * @param Type mail
 	 */
-	public void learn(File folder, Type mail){
+	public void learnMails(File folder, Type mail){
 		if(folder.exists() && folder.isDirectory()){
 			File[] files = folder.listFiles();
 			for(File f: files){
@@ -58,6 +58,19 @@ public class BayersSpamfilter {
 			words = learn(file, ham, spam);
 		}
 		return calculateSpam(reduceRedundanz(words));
+	}
+	public void checkFolder(File folder){
+		if(folder.exists() && folder.isDirectory()){
+			File[] files = folder.listFiles();
+			for(File f:files){
+				String[] words = getStringsOutOfFile(f);
+				double probability = calculateSpam(reduceRedundanz(words));
+				String result = "Mail ist ";
+				int value = (int)(probability * 100);
+				result += (probability < PROBABILITY_OF_SPAM)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
+				System.out.println(result);
+			}
+		}
 	}
 	private String[] learn(File file, Map<String, Integer> target, Map<String, Integer> check){
 		String[] words = getStringsOutOfFile(file);
@@ -105,12 +118,16 @@ public class BayersSpamfilter {
 		return text.toString().split("\\s+|(\\r?\\n)");
 	}
 	private double calculateSpam(HashSet<String> words){
+		//TODO berechnung noch fehlerhaft!
 		double spamProbability = 1;
 		double hamProbability = 1;
 		for(String w: words){
-			spamProbability *= spam.get(w) / amountOfMails;
-			hamProbability *= ham.get(w) / amountOfMails;
+			if(spam.get(w) != null){
+				spamProbability = spamProbability * spam.get(w) / amountOfMails;
+				hamProbability = hamProbability * ham.get(w) / amountOfMails;
+			}
 		}
+		System.out.println(spamProbability + hamProbability);
 		return spamProbability/(spamProbability + hamProbability);
 	}
 
