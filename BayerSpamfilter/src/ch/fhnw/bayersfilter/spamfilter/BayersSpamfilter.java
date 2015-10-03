@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 /***
@@ -19,6 +20,8 @@ public class BayersSpamfilter {
 		HAM,
 		SPAM
 	}
+	
+	private final double PROBABILITY_OF_SPAM = 0.5;
 	
 	private int amountOfMails = 0;
 	private Map<String, Integer> spam = new HashMap<String, Integer>();
@@ -44,7 +47,7 @@ public class BayersSpamfilter {
 	 * This method is used to add a new mail to the learned ones and set a flag if
 	 * it is a spam or ham mail.
 	 * @param file
-	 * @param isSpam
+	 * @param mail
 	 * @return double probability of spam
 	 */
 	public double addMail(File file, Type mail){
@@ -54,15 +57,22 @@ public class BayersSpamfilter {
 		} else {
 			learn(file, ham, spam);
 		}
-		amountOfMails++;
 		return 0;
 	}
 	private void learn(File file, Map<String, Integer> target, Map<String, Integer> check){
-		String[] text = getStringsOutOfFile(file);
-		fillMapWithWords(text, ham, spam);
+		String[] words = getStringsOutOfFile(file);
+		fillMapWithWords(reduceRedundanz(words), target, check);
 		amountOfMails++;
 	}
-	private void fillMapWithWords(String[] words, Map<String, Integer> target, Map<String, Integer> check){
+	private HashSet<String> reduceRedundanz(String[] words){
+		//each word only one time per mail
+		HashSet<String> redundanzList = new HashSet<String>();
+		for(String w:words){
+			redundanzList.add(w);
+		}
+		return redundanzList;
+	}
+	private void fillMapWithWords(HashSet<String> words, Map<String, Integer> target, Map<String, Integer> check){
 		for(String w: words){
 			if(target.get(w) != null){
 				target.put(w, target.get(w) + 1);
@@ -92,6 +102,10 @@ public class BayersSpamfilter {
 			e.printStackTrace();
 		}
 		return text.toString().split("\\s+|(\\r?\\n)");
+	}
+	private double calculateSpam(String[] words){
+		
+		return 0;
 	}
 
 }
