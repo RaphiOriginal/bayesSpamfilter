@@ -59,6 +59,10 @@ public class BayersSpamfilter {
 		}
 		return calculateSpam(reduceRedundanz(words));
 	}
+	/**
+	 * checks all files in a folder and prints the result to console
+	 * @param folder
+	 */
 	public void checkFolder(File folder){
 		if(folder.exists() && folder.isDirectory()){
 			File[] files = folder.listFiles();
