@@ -14,33 +14,29 @@ import java.util.Map;
  * @author martineberle
  */
 public class BayersSpamfilter {
+	
+	public enum Type {
+		HAM,
+		SPAM
+	}
+	
 	private int amountOfMails = 0;
 	private Map<String, Integer> spam = new HashMap<String, Integer>();
 	private Map<String, Integer> ham = new HashMap<String, Integer>();
 	
 	/**
 	 * This method is used to learn the system what spam looks like.
-	 * The param is the path to the folder where a lot of spam mails are saved
-	 * @param folder
+	 * The param is the path to the folder where a lot of spam or ham mails are saved.
+	 * Type is a Flag to tell what kind of mail there are saved
+	 * @param File folder
+	 * @param Type mail
 	 */
-	public void learnSpam(File folder){
+	public void learn(File folder, Type mail){
 		if(folder.exists() && folder.isDirectory()){
 			File[] files = folder.listFiles();
 			for(File f: files){
-				learn(f, spam, ham);
-			}
-		}
-	}
-	/**
-	 * This method is used to learn the system what ham looks like.
-	 * The param is the path to the folder where a lot of ham mails are saved
-	 * @param folder
-	 */
-	public void learnHam(File folder){
-		if(folder.exists() && folder.isDirectory()){
-			File[] files = folder.listFiles();
-			for(File f: files){
-				learn(f, ham, spam);
+				if(mail == Type.SPAM) learn(f, spam, ham);
+				else learn(f, ham, spam);
 			}
 		}
 	}
@@ -49,15 +45,17 @@ public class BayersSpamfilter {
 	 * it is a spam or ham mail.
 	 * @param file
 	 * @param isSpam
+	 * @return double probability of spam
 	 */
-	public void addMail(File file, boolean isSpam){
+	public double addMail(File file, Type mail){
 		//TODO add return value to show how much precentage of spam it is: Task 2 e)
-		if(isSpam){
+		if(Type.SPAM == mail){
 			learn(file, spam, ham);
 		} else {
 			learn(file, ham, spam);
 		}
 		amountOfMails++;
+		return 0;
 	}
 	private void learn(File file, Map<String, Integer> target, Map<String, Integer> check){
 		String[] text = getStringsOutOfFile(file);
