@@ -51,18 +51,19 @@ public class BayersSpamfilter {
 	 * @return double probability of spam
 	 */
 	public double addMail(File file, Type mail){
-		//TODO add return value to show how much precentage of spam it is: Task 2 e)
+		String[] words;
 		if(Type.SPAM == mail){
-			learn(file, spam, ham);
+			words = learn(file, spam, ham);
 		} else {
-			learn(file, ham, spam);
+			words = learn(file, ham, spam);
 		}
-		return 0;
+		return calculateSpam(reduceRedundanz(words));
 	}
-	private void learn(File file, Map<String, Integer> target, Map<String, Integer> check){
+	private String[] learn(File file, Map<String, Integer> target, Map<String, Integer> check){
 		String[] words = getStringsOutOfFile(file);
 		fillMapWithWords(reduceRedundanz(words), target, check);
 		amountOfMails++;
+		return words;
 	}
 	private HashSet<String> reduceRedundanz(String[] words){
 		//each word only one time per mail
@@ -103,9 +104,14 @@ public class BayersSpamfilter {
 		}
 		return text.toString().split("\\s+|(\\r?\\n)");
 	}
-	private double calculateSpam(String[] words){
-		
-		return 0;
+	private double calculateSpam(HashSet<String> words){
+		double spamProbability = 1;
+		double hamProbability = 1;
+		for(String w: words){
+			spamProbability *= spam.get(w) / amountOfMails;
+			hamProbability *= ham.get(w) / amountOfMails;
+		}
+		return spamProbability/(spamProbability + hamProbability);
 	}
 
 }
