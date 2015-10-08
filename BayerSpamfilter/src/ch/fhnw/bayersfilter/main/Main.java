@@ -12,13 +12,17 @@ public class Main {
 		filter.learnMails(new File("../ham-anlern"), BayersSpamfilter.Type.HAM);
 		
 		System.out.println("Ham kalibrierung:");
-		filter.checkFolder(new File("../ham-kallibrierung"));
+		System.out.println("______________________");
+		filter.calibrate(new File("../ham-kallibrierung"), BayersSpamfilter.Type.HAM);
 		System.out.println("Spam kalibrierung:");
-		filter.checkFolder(new File("../spam-kallibrierung"));
+		System.out.println("______________________");
+		filter.calibrate(new File("../spam-kallibrierung"),BayersSpamfilter.Type.SPAM);
 		
 		System.out.println("Ham test:");
+		System.out.println("______________________");
 		filter.checkFolder(new File("../ham-test"));
 		System.out.println("Spam test:");
+		System.out.println("______________________");
 		filter.checkFolder(new File("../spam-test"));
 	}
 

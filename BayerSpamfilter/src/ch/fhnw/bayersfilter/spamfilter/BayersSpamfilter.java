@@ -23,9 +23,11 @@ public class BayersSpamfilter {
 	
 	private final double PROBABILITY_OF_SPAM = 0.5;
 	
-	private int amountOfMails = 0;
-	private Map<String, Integer> spam = new HashMap<String, Integer>();
-	private Map<String, Integer> ham = new HashMap<String, Integer>();
+	private int amountOfSpamMails = 0;
+	private int amountOfHamMails = 0;
+	private Map<String, Double> spam = new HashMap<String, Double>();
+	private Map<String, Double> ham = new HashMap<String, Double>();
+	HashMap<String, Word> wordsList = new HashMap<String, Word>();
 	
 	/**
 	 * This method is used to learn the system what spam looks like.
@@ -38,10 +40,16 @@ public class BayersSpamfilter {
 		if(folder.exists() && folder.isDirectory()){
 			File[] files = folder.listFiles();
 			for(File f: files){
-				if(mail == Type.SPAM) learn(f, spam, ham);
-				else learn(f, ham, spam);
+				if(mail == Type.SPAM) {
+					learn(f, spam, ham);
+					amountOfSpamMails++;
+				}else {
+					learn(f, ham, spam);
+					amountOfHamMails++;
+				}
 			}
 		}
+		wordsList = getSignificantList();
 	}
 	/**
 	 * This method is used to add a new mail to the learned ones and set a flag if
@@ -54,10 +62,32 @@ public class BayersSpamfilter {
 		String[] words;
 		if(Type.SPAM == mail){
 			words = learn(file, spam, ham);
+			amountOfSpamMails++;
 		} else {
 			words = learn(file, ham, spam);
+			amountOfHamMails++;
 		}
 		return calculateSpam(reduceRedundanz(words));
+	}
+	/**
+	 * Calibrates the mails in the folder and add the words to our filter
+	 * @param folder
+	 * @param mail
+	 */
+	public void calibrate(File folder, Type mail){
+		if(folder.exists() && folder.isDirectory()){
+			File[] files = folder.listFiles();
+			for(File f:files){
+				double result = addMail(f, mail);
+				int value = (int)(result * 100);
+				if(mail == Type.SPAM){
+					System.out.println(value + "% of Spam should be Spam");
+				} else {
+					System.out.println(value + "% of Spam should be Ham");
+				}
+			}
+			wordsList = getSignificantList();
+		}
 	}
 	/**
 	 * checks all files in a folder and prints the result to console
@@ -76,10 +106,34 @@ public class BayersSpamfilter {
 			}
 		}
 	}
-	private String[] learn(File file, Map<String, Integer> target, Map<String, Integer> check){
+	private HashMap<String, Word> getSignificantList(){
+		Word[] words = new Word[50];
+		for(String w : spam.keySet()){
+			Word word = new Word(w, spam.get(w), ham.get(w));
+			for(int i = 0; i < words.length; i++){
+				if(words[i] == null){
+					words[i] = word;
+				} else {
+					if(words[i].difference < word.difference){
+						Word temp = words[i];
+						words[i] = word;
+						word = temp;
+					}
+				}
+			}
+		}
+		return convertArrayToList(words);
+	}
+	private HashMap<String, Word> convertArrayToList(Word[] words){
+		HashMap<String, Word> list = new HashMap<String, Word>();
+		for(Word w : words){
+			list.put(w.word, w);
+		}
+		return list;
+	}
+	private String[] learn(File file, Map<String, Double> target, Map<String, Double> check){
 		String[] words = getStringsOutOfFile(file);
 		fillMapWithWords(reduceRedundanz(words), target, check);
-		amountOfMails++;
 		return words;
 	}
 	private HashSet<String> reduceRedundanz(String[] words){
@@ -90,15 +144,15 @@ public class BayersSpamfilter {
 		}
 		return redundanzList;
 	}
-	private void fillMapWithWords(HashSet<String> words, Map<String, Integer> target, Map<String, Integer> check){
+	private void fillMapWithWords(HashSet<String> words, Map<String, Double> target, Map<String, Double> check){
 		for(String w: words){
 			if(target.get(w) != null){
 				target.put(w, target.get(w) + 1);
 			} else {
-				target.put(w, 1);
+				target.put(w, 1.0);
 			}
 			if(check.get(w) == null){
-				check.put(w, 1);
+				check.put(w, 0.001);
 			}
 		}
 	}
@@ -122,17 +176,25 @@ public class BayersSpamfilter {
 		return text.toString().split("\\s+|(\\r?\\n)");
 	}
 	private double calculateSpam(HashSet<String> words){
-		//TODO berechnung noch fehlerhaft!
-		double spamProbability = 1;
-		double hamProbability = 1;
+		double probability = 1;
 		for(String w: words){
-			if(spam.get(w) != null){
-				spamProbability = spamProbability * spam.get(w) / amountOfMails;
-				hamProbability = hamProbability * ham.get(w) / amountOfMails;
+			Word wo = wordsList.get(w);
+			if(wo != null){
+				probability = probability * (wo.probabilityHam / amountOfHamMails)/
+						(wo.probabilitySpam / amountOfSpamMails);
 			}
 		}
-		System.out.println(spamProbability + hamProbability);
-		return spamProbability/(spamProbability + hamProbability);
+		return 1/(1 + probability);
 	}
+	/*private double calculateSpam(HashSet<String> words){
+		double probability = 1;
+		for(String w: words){
+			if(spam.get(w) != null){
+				probability = probability * ((double)ham.get(w) / (double)amountOfHamMails)/
+						((double)spam.get(w) / (double)amountOfSpamMails);
+			}
+		}
+		return 1/(1 + probability);
+	}*/
 
 }
