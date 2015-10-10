@@ -29,6 +29,9 @@ public class BayersSpamfilter {
 	//the point in % when a mail is busted as Spam
 	private final double PROBABILITY_OF_SPAM = 0.5;
 	
+	//the size of the specific array
+	private final int SIZE_OF_SPECIFIC_ARRAY = 50;
+	
 	//count the learned mails of each Type
 	private int amountOfSpamMails = 0;
 	private int amountOfHamMails = 0;
@@ -37,10 +40,18 @@ public class BayersSpamfilter {
 	private Map<String, Word> wordList = new HashMap<String, Word>();
 	
 	//save all the specific words in an map to call them fast
-	HashMap<String, Word> mostSpecificWords = new HashMap<String, Word>();
-	
+	private HashMap<String, Word> mostSpecificSpam = new HashMap<String, Word>();
+	private HashMap<String, Word> mostSpecificHam = new HashMap<String, Word>();
+ 	
 	//all specific words in an array to update them easier
-	Word[] mostSpecificWordsArray = new Word[50];
+	private Word[] mostSpecificSpamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
+	private Word[] mostSpecificHamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
+		
+	//amount of mails classified as Spam in an check
+	private int classifiedAsSpam = 0;
+	
+	//amount of mails classified as Ham in an check
+	private int classifiedAsHam = 0;
 	
 	/**
 	 * This method is used to learn the system what spam looks like.
@@ -64,34 +75,41 @@ public class BayersSpamfilter {
 	 */
 	public double addMail(File file, Type mail){
 		String[] words = learn(file, mail);
-		return calculateSpam(reduceRedundanz(words));
+		return calculateSpamAll(reduceRedundanz(words));
 	}
 	/**
 	 * Calibrates the mails in the folder and add the words to our filter
+	 * with showDetail can you decide if you want to see a result for each mail
 	 * @param folder
 	 * @param mail
+	 * @param showDetail
 	 */
-	public void calibrate(File folder, Type mail){
+	public void calibrate(File folder, Type mail, boolean showDetail){
 		File[] files = getFiles(folder);
 		for(File f:files){
 			double result = addMail(f, mail);
-			updateSignificantList();
-			mostSpecificWords = convertArrayToList(mostSpecificWordsArray);
+			if(result < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
 			int value = (int)(result * 100);
-			if(mail == Type.SPAM){
-				System.out.println(value + "% of Spam should be Spam");
-			} else {
-				System.out.println(value + "% of Spam should be Ham");
+			if(showDetail){
+				if(mail == Type.SPAM){
+					System.out.println(value + "% of Spam should be Spam");
+				} else {
+					System.out.println(value + "% of Spam should be Ham");
+				}
 			}
 		}
+		printStats();
 	}
 	/**
 	 * checks all files in a folder and prints the result to console
+	 * with showDetail can you decide if you want to see the result for each mail
 	 * @param folder
+	 * @param showDetail
 	 */
-	public void checkFolder(File folder){
+	public void checkFolder(File folder, boolean showDetail){
 		updateSignificantList();
-		mostSpecificWords = convertArrayToList(mostSpecificWordsArray);
+		mostSpecificSpam = convertArrayToList(mostSpecificSpamArray);
+		mostSpecificHam = convertArrayToList(mostSpecificHamArray);
 		File[] files = getFiles(folder);
 		for(File f:files){
 			String[] words = getStringsOutOfFile(f);
@@ -99,8 +117,40 @@ public class BayersSpamfilter {
 			String result = "Mail ist ";
 			int value = (int)(probability * 100);
 			result += (probability < PROBABILITY_OF_SPAM)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
-			System.out.println(result);
+			if(probability < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
+			if(showDetail) System.out.println(result);
 		}
+		System.out.println("WITH MOST SPECIFIC WORDS");
+		printStats();
+		for(File f:files){
+			String[] words = getStringsOutOfFile(f);
+			double probability = calculateSpamAll(reduceRedundanz(words));
+			String result = "Mail ist ";
+			int value = (int)(probability * 100);
+			result += (probability < PROBABILITY_OF_SPAM)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
+			if(probability < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
+			if(showDetail) System.out.println(result);
+		}
+		System.out.println("WITH ALL WORDS IN LIST");
+		printStats();
+	}
+	/**
+	 * resets the Stats values
+	 */
+	private void resetStats(){
+		classifiedAsSpam = 0;
+		classifiedAsHam = 0;
+	}
+	/**
+	 * prints the stats made by checking mails
+	 */
+	private void printStats(){
+		System.out.println("#####################################");
+		System.out.println("Total checked Mails: " + (classifiedAsSpam + classifiedAsHam));
+		System.out.println("Found amount of Ham: " + classifiedAsHam);
+		System.out.println("Found amount of Spam: " + classifiedAsSpam);
+		System.out.println("#####################################");
+		resetStats();
 	}
 	/**
 	 * returns an File array if the file is an Folder
@@ -120,15 +170,27 @@ public class BayersSpamfilter {
 	private void updateSignificantList(){
 		for(String w : wordList.keySet()){
 			Word word = wordList.get(w);
-			for(int i = 0; i < mostSpecificWordsArray.length; i++){
-				if(mostSpecificWordsArray[i] == null){
-					mostSpecificWordsArray[i] = word;
-				} else {
-					if(mostSpecificWordsArray[i].difference < word.difference){
-						Word temp = mostSpecificWordsArray[i];
-						mostSpecificWordsArray[i] = word;
-						word = temp;
-					}
+			if(word.ham < word.spam){
+				fillTheSpecificArray(word, mostSpecificSpamArray);
+			} else {
+				fillTheSpecificArray(word, mostSpecificHamArray);
+			}
+		}
+	}
+	/**
+	 * checks if the difference is bigger than an other word in the list and sorts the smallest out
+	 * @param word
+	 * @param array
+	 */
+	private void fillTheSpecificArray(Word word, Word[] array){
+		for(int i = 0; i < array.length; i++){
+			if(array[i] == null){
+				array[i] = word;
+			} else {
+				if(array[i].difference < word.difference){
+					Word temp = array[i];
+					array[i] = word;
+					word = temp;
 				}
 			}
 		}
@@ -154,6 +216,7 @@ public class BayersSpamfilter {
 	private String[] learn(File file, Type mail){
 		String[] words = getStringsOutOfFile(file);
 		fillMapWithWords(reduceRedundanz(words), mail);
+		if(mail == Type.HAM) amountOfHamMails++; else amountOfSpamMails++;
 		return words;
 	}
 	/**
@@ -179,15 +242,15 @@ public class BayersSpamfilter {
 			Word word = wordList.get(w);
 			if(word != null){
 				if(mail == Type.SPAM){
-					word.probabilitySpam += 1;
+					word.addSpam();
 				} else {
-					word.probabilityHam += 1;
+					word.addHam();
 				}
 			} else {
 				if(mail == Type.SPAM) {
-					wordList.put(w, new Word(w, 1, 0.001));
+					wordList.put(w, new Word(w, 1, 0));
 				} else {
-					wordList.put(w, new Word(w, 0.001, 1));
+					wordList.put(w, new Word(w, 0, 1));
 				}
 			}
 		}
@@ -222,16 +285,17 @@ public class BayersSpamfilter {
 	 * @return double how much % of Spam the mail is
 	 */
 	private double calculateSpam(HashSet<String> words){
-		final double PROBABILITY_OF_HAM = 1 - PROBABILITY_OF_SPAM;
 		double probability = 1;
 		for(String w: words){
-			Word wo = mostSpecificWords.get(w);
-			if(wo != null){
-				probability = probability * (PROBABILITY_OF_HAM * wo.probabilityHam / amountOfHamMails)/
-						(PROBABILITY_OF_SPAM * wo.probabilitySpam / amountOfSpamMails);
+			Word ws = mostSpecificSpam.get(w);
+			Word wh = mostSpecificHam.get(w);
+			if(ws != null){
+				probability = probability * calculateHamOverSpam(ws);
+			} else if(wh != null){
+				probability = probability * calculateHamOverSpam(wh);
 			}
 		}
-		return 1/(1 + probability);
+		return calculateBayersFormula(probability);
 	}
 	/**
 	 * calculates the Spam with all Words in wordList
@@ -243,11 +307,44 @@ public class BayersSpamfilter {
 		for(String w: words){
 			Word word = wordList.get(w);
 			if(word != null){
-				probability = probability * (word.probabilityHam / (double)amountOfHamMails)/
-						(word.probabilitySpam / (double)amountOfSpamMails);
+				probability = probability * calculateHamOverSpam(word);
 			}
 		}
-		return 1/(1 + probability);
+		return calculateBayersFormula(probability);
+	}
+	/**
+	 * divides the probability of ham with the probability of spam
+	 * @param word
+	 * @return double the divided result
+	 */
+	private double calculateHamOverSpam(Word word){
+		return (word.ham / (double)amountOfHamMails)/
+				(word.spam / (double)amountOfSpamMails);
+	}
+	/**
+	 * calculates the probability of beeing a spam mail
+	 * @param probability
+	 * @return probability of beeing a spam mail
+	 */
+	private double calculateBayersFormula(double probability){
+		final double PROBABILITY_OF_HAM = 1 - PROBABILITY_OF_SPAM;
+		double spamFactor = PROBABILITY_OF_HAM/PROBABILITY_OF_SPAM;
+		return 1/(1 + spamFactor * probability);
+	}
+	/**
+	 * print all Words saved in the specific arrays
+	 */
+	public void printSpecificLists(){
+		System.out.println("----------------------------------------------------");
+		System.out.println("Words in the Spam Array:");
+		for(Word w: mostSpecificSpamArray){
+			System.out.println(w.toString());
+		}
+		System.out.println("Words in the Ham Array:");
+		for(Word w: mostSpecificHamArray){
+			System.out.println(w.toString());
+		}
+		System.out.println("----------------------------------------------------");
 	}
 
 }
