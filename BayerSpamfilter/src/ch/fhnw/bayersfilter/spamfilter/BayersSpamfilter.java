@@ -30,7 +30,7 @@ public class BayersSpamfilter {
 	private final double PROBABILITY_OF_SPAM;
 	
 	//the size of the specific array
-	private final int SIZE_OF_SPECIFIC_ARRAY = 50;
+	private final int SIZE_OF_SPECIFIC_ARRAY;
 	
 	//count the learned mails of each Type
 	private int amountOfSpamMails = 0;
@@ -44,8 +44,8 @@ public class BayersSpamfilter {
 	private HashMap<String, Word> mostSpecificHam = new HashMap<String, Word>();
  	
 	//all specific words in an array to update them easier
-	private Word[] mostSpecificSpamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
-	private Word[] mostSpecificHamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
+	private Word[] mostSpecificSpamArray;
+	private Word[] mostSpecificHamArray;
 		
 	//amount of mails classified as Spam in an check
 	private int classifiedAsSpam = 0;
@@ -53,7 +53,7 @@ public class BayersSpamfilter {
 	//amount of mails classified as Ham in an check
 	private int classifiedAsHam = 0;
 	
-	public BayersSpamfilter(double probabilityOfSpam){
+	public BayersSpamfilter(double probabilityOfSpam, int arraySize){
 		if(probabilityOfSpam > 1){
 			PROBABILITY_OF_SPAM = 1;
 		} else if(probabilityOfSpam < 0){
@@ -61,6 +61,15 @@ public class BayersSpamfilter {
 		} else {
 			PROBABILITY_OF_SPAM = probabilityOfSpam;
 		}
+		if(arraySize < 10){
+			SIZE_OF_SPECIFIC_ARRAY = 10;
+		} else if(arraySize > 10000){
+			SIZE_OF_SPECIFIC_ARRAY = 10000;
+		} else {
+			SIZE_OF_SPECIFIC_ARRAY = arraySize;
+		}
+		mostSpecificSpamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
+		mostSpecificHamArray = new Word[SIZE_OF_SPECIFIC_ARRAY];
 	}
 	/**
 	 * This method is used to learn the system what spam looks like.
