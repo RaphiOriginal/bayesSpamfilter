@@ -4,8 +4,17 @@ import java.io.File;
 
 import ch.fhnw.bayersfilter.spamfilter.BayersSpamfilter;
 
+/**
+ * where all the spam magic happens
+ * @author raphaelbrunner
+ * @author martin eberle
+ *
+ */
 public class Main {
-
+	/**
+	 * main method
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		//set true if you like to see more details for each mails and the specific lists
 		final boolean withDetails = false;
