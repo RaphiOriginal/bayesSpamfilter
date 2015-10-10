@@ -27,7 +27,7 @@ public class BayersSpamfilter {
 	}
 	
 	//the point in % when a mail is busted as Spam
-	private final double PROBABILITY_OF_SPAM = 0.5;
+	private final double PROBABILITY_OF_SPAM;
 	
 	//the size of the specific array
 	private final int SIZE_OF_SPECIFIC_ARRAY = 50;
@@ -53,6 +53,15 @@ public class BayersSpamfilter {
 	//amount of mails classified as Ham in an check
 	private int classifiedAsHam = 0;
 	
+	public BayersSpamfilter(double probabilityOfSpam){
+		if(probabilityOfSpam > 1){
+			PROBABILITY_OF_SPAM = 1;
+		} else if(probabilityOfSpam < 0){
+			PROBABILITY_OF_SPAM = 0;
+		} else {
+			PROBABILITY_OF_SPAM = probabilityOfSpam;
+		}
+	}
 	/**
 	 * This method is used to learn the system what spam looks like.
 	 * The param is the path to the folder where a lot of spam or ham mails are saved.
