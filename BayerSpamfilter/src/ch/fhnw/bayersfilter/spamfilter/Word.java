@@ -7,6 +7,9 @@ package ch.fhnw.bayersfilter.spamfilter;
  */
 public class Word {
 	//the needed if there is a word never found in a specific mail type
+	//0 is not allowed because it would give an error in the bayers formule
+	//0 * value situation would happen and always give 0 as result, or in our case 1/1 = 1
+	//everything would be spam if there is somewhere one character that is only used in spam or ham
 	public final double ZERO_VALUE = 0.001;
 	
 	//saves the word as String
@@ -74,6 +77,14 @@ public class Word {
 	
 	@Override
 	public String toString(){
-		return "Word: " + word + " Ham: " + ham + " Spam: " + spam + " Difference: " + difference;
+		return "Word: " + word + "\tHam: " + ham + "\tSpam: " + spam + "\tDifference: " + difference;
+	}
+	@Override
+	public boolean equals(Object obj){
+		if(obj instanceof Word){
+			Word w = (Word)obj;
+			return word.equals(w.word);
+		}
+		return false;
 	}
 }

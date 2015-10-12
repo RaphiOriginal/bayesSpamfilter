@@ -27,7 +27,11 @@ public class BayersSpamfilter {
 	}
 	
 	//the point in % when a mail is busted as Spam
-	private final double PROBABILITY_OF_SPAM;
+	private double probabilityOfSpam;
+	
+	//these two values are used to calibrate the new probabilityOfSpam value
+	private double highHamPeak = 0.0;
+	private double lowSpamPeak = 1.0;
 	
 	//the size of the specific array
 	private final int SIZE_OF_SPECIFIC_ARRAY;
@@ -55,11 +59,11 @@ public class BayersSpamfilter {
 	
 	public BayersSpamfilter(double probabilityOfSpam, int arraySize){
 		if(probabilityOfSpam > 1){
-			PROBABILITY_OF_SPAM = 1;
+			probabilityOfSpam = 1;
 		} else if(probabilityOfSpam < 0){
-			PROBABILITY_OF_SPAM = 0;
+			probabilityOfSpam = 0;
 		} else {
-			PROBABILITY_OF_SPAM = probabilityOfSpam;
+			this.probabilityOfSpam = probabilityOfSpam;
 		}
 		if(arraySize < 10){
 			SIZE_OF_SPECIFIC_ARRAY = 10;
@@ -96,7 +100,9 @@ public class BayersSpamfilter {
 		return calculateSpamAll(reduceRedundanz(words));
 	}
 	/**
-	 * Calibrates the mails in the folder and add the words to our filter
+	 * Calibrates the mails in the folder and add the words to our filter. It also does
+	 * recalculate the threshold of spam with the average between the highest probability in Ham
+	 * and the lowest probability found in Spam
 	 * with showDetail can you decide if you want to see a result for each mail
 	 * @param folder
 	 * @param mail
@@ -106,16 +112,18 @@ public class BayersSpamfilter {
 		File[] files = getFiles(folder);
 		for(File f:files){
 			double result = addMail(f, mail);
-			if(result < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
+			if(result < probabilityOfSpam) classifiedAsHam++; else classifiedAsSpam++;
 			int value = (int)(result * 100);
-			if(showDetail){
 				if(mail == Type.SPAM){
-					System.out.println(value + "% of Spam should be Spam");
+					if(result < lowSpamPeak) lowSpamPeak = result;
+					if(showDetail) System.out.println(value + "% of Spam should be Spam");
 				} else {
-					System.out.println(value + "% of Spam should be Ham");
+					if(result > highHamPeak) highHamPeak = result;
+					if(showDetail) System.out.println(value + "% of Spam should be Ham");
 				}
-			}
 		}
+		probabilityOfSpam = (highHamPeak + lowSpamPeak)/2;
+		System.out.println("New threshold of spam is " + probabilityOfSpam);
 		printStats();
 	}
 	/**
@@ -134,8 +142,8 @@ public class BayersSpamfilter {
 			double probability = calculateSpam(reduceRedundanz(words));
 			String result = "Mail ist ";
 			int value = (int)(probability * 100);
-			result += (probability < PROBABILITY_OF_SPAM)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
-			if(probability < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
+			result += (probability < probabilityOfSpam)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
+			if(probability < probabilityOfSpam) classifiedAsHam++; else classifiedAsSpam++;
 			if(showDetail) System.out.println(result);
 		}
 		System.out.println("WITH MOST SPECIFIC WORDS");
@@ -145,8 +153,8 @@ public class BayersSpamfilter {
 			double probability = calculateSpamAll(reduceRedundanz(words));
 			String result = "Mail ist ";
 			int value = (int)(probability * 100);
-			result += (probability < PROBABILITY_OF_SPAM)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
-			if(probability < PROBABILITY_OF_SPAM) classifiedAsHam++; else classifiedAsSpam++;
+			result += (probability < probabilityOfSpam)? "HAM mit " + value + "%" : "SPAM mit " + value + "%";
+			if(probability < probabilityOfSpam) classifiedAsHam++; else classifiedAsSpam++;
 			if(showDetail) System.out.println(result);
 		}
 		System.out.println("WITH ALL WORDS IN LIST");
@@ -163,10 +171,15 @@ public class BayersSpamfilter {
 	 * prints the stats made by checking mails
 	 */
 	private void printStats(){
+		int total = classifiedAsSpam + classifiedAsHam;
+		double pHam = (double)Math.round(100.0 / (double)total * (double)classifiedAsHam*100)/100;
+		double pSpam = (double)Math.round(100.0 / (double)total * (double)classifiedAsSpam*100)/100;
 		System.out.println("#####################################");
-		System.out.println("Total checked Mails: " + (classifiedAsSpam + classifiedAsHam));
+		System.out.println("Total checked Mails: " + total);
 		System.out.println("Found amount of Ham: " + classifiedAsHam);
+		System.out.println("Percentage: " + pHam + "%");
 		System.out.println("Found amount of Spam: " + classifiedAsSpam);
+		System.out.println("Percentage: " + pSpam + "%");
 		System.out.println("#####################################");
 		resetStats();
 	}
@@ -202,13 +215,15 @@ public class BayersSpamfilter {
 	 */
 	private void fillTheSpecificArray(Word word, Word[] array){
 		for(int i = 0; i < array.length; i++){
-			if(array[i] == null){
+			Word w = array[i];
+			if(w == null){
 				array[i] = word;
 			} else {
-				if(array[i].difference < word.difference){
-					Word temp = array[i];
+				if(w.difference < word.difference){
+					Word temp = w;
 					array[i] = word;
 					word = temp;
+					if(w.equals(word)) return;
 				}
 			}
 		}
@@ -345,8 +360,8 @@ public class BayersSpamfilter {
 	 * @return probability of beeing a spam mail
 	 */
 	private double calculateBayersFormula(double probability){
-		final double PROBABILITY_OF_HAM = 1 - PROBABILITY_OF_SPAM;
-		double spamFactor = PROBABILITY_OF_HAM/PROBABILITY_OF_SPAM;
+		final double PROBABILITY_OF_HAM = 1 - probabilityOfSpam;
+		double spamFactor = PROBABILITY_OF_HAM/probabilityOfSpam;
 		return 1/(1 + spamFactor * probability);
 	}
 	/**
@@ -355,12 +370,14 @@ public class BayersSpamfilter {
 	public void printSpecificLists(){
 		System.out.println("----------------------------------------------------");
 		System.out.println("Words in the Spam Array:");
+		int counter = 1;
 		for(Word w: mostSpecificSpamArray){
-			System.out.println(w.toString());
+			System.out.println((counter++) + ": " + w.toString());
 		}
 		System.out.println("Words in the Ham Array:");
+		counter = 1;
 		for(Word w: mostSpecificHamArray){
-			System.out.println(w.toString());
+			System.out.println((counter++) + ": " + w.toString());
 		}
 		System.out.println("----------------------------------------------------");
 	}

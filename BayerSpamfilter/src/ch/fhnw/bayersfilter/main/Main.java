@@ -19,14 +19,14 @@ public class Main {
 		//set true if you like to see more details for each mails and the specific lists
 		final boolean withDetails = false;
 		
-		//set the value at witch level a mail has to be marked as spam
-		final double PROBABILITY_OF_SPAM = 0.5;
+		//set the start value at witch level a mail has to be marked as spam
+		double probabilityOfSpam = 0.5;
 		
 		//set the size for each the two arrays for the specific words (one for ham and one for spam)
-		final int SIZE_OF_SPECIFIC_ARRAY = 50;
+		final int SIZE_OF_SPECIFIC_ARRAY = 1800;
 		
 		//learn the mails
-		BayersSpamfilter filter = new BayersSpamfilter(PROBABILITY_OF_SPAM, SIZE_OF_SPECIFIC_ARRAY);
+		BayersSpamfilter filter = new BayersSpamfilter(probabilityOfSpam, SIZE_OF_SPECIFIC_ARRAY);
 		filter.learnMails(new File("../spam-anlern"), BayersSpamfilter.Type.SPAM);
 		filter.learnMails(new File("../ham-anlern"), BayersSpamfilter.Type.HAM);
 		
